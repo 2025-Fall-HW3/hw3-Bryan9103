@@ -117,7 +117,13 @@ class RiskParityPortfolio:
         TODO: Complete Task 2 Below
         """
 
-
+        for row in range(len(df)):
+            value = 0
+            if row > self.lookback:
+                inverted_volatility = 1 / np.std(df_returns[assets][row - self.lookback:row])
+                value = inverted_volatility/sum(inverted_volatility)
+                
+            self.portfolio_weights.iloc[row].fillna(value, inplace=True)
 
         """
         TODO: Complete Task 2 Above
