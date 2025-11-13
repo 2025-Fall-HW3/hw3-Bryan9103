@@ -63,6 +63,9 @@ class EqualWeightPortfolio:
         TODO: Complete Task 1 Below
         """
 
+        for asset in assets:
+            self.portfolio_weights[asset].fillna(1 / len(assets), inplace = True)
+            
         """
         TODO: Complete Task 1 Above
         """
