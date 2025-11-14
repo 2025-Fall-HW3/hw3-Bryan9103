@@ -65,7 +65,7 @@ class EqualWeightPortfolio:
 
         for asset in assets:
             self.portfolio_weights[asset].fillna(1 / len(assets), inplace = True)
-            
+
         """
         TODO: Complete Task 1 Above
         """
@@ -199,8 +199,22 @@ class MeanVariancePortfolio:
 
                 # Sample Code: Initialize Decision w and the Objective
                 # NOTE: You can modify the following code
-                w = model.addMVar(n, name="w", ub=1)
-                model.setObjective(w.sum(), gp.GRB.MAXIMIZE)
+                # w = model.addMVar(n, name="w", ub=1)
+                # model.setObjective(w.sum(), gp.GRB.MAXIMIZE)
+
+                w = model.addMVar(n, name="w", lb=0)
+                
+                front = 0
+                for i in range(n):
+                    front += w[i] * mu[i]
+
+                back = 0
+                for i in range(n):
+                    for j in range(n):
+                        back += w[i] * Sigma[i, j] * w[j]
+
+                model.setObjective(front - ((gamma / 2) * back), gp.GRB.MAXIMIZE)
+                model.addConstr(w.sum() == 1)
 
                 """
                 TODO: Complete Task 3 Above
