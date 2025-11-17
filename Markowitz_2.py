@@ -51,7 +51,7 @@ class MyPortfolio:
     NOTE: You can modify the initialization function
     """
 
-    def __init__(self, price, exclude, lookback=50, gamma=0):
+    def __init__(self, price, exclude, lookback=150, gamma=3):
         self.price = price
         self.returns = price.pct_change().fillna(0)
         self.exclude = exclude
@@ -71,6 +71,59 @@ class MyPortfolio:
         TODO: Complete Task 4 Below
         """
         
+        def mv_opt(R_n_full, R_n_mu, gamma):
+            Sigma_history = R_n_full.cov().values
+            mu = R_n_mu.mean().values
+            n = len(R_n_full.columns)
+            
+            avg_variance = np.diag(Sigma_history).mean()
+            Sigma_target = np.identity(n) * avg_variance
+            Sigma = 0.9 * Sigma_history + 0.1 * Sigma_target
+
+            fallback_solution = [1/n] * n 
+
+            try:
+                with gp.Env(empty=True) as env:
+                    env.setParam("OutputFlag", 0)
+                    env.setParam("DualReductions", 0)
+                    env.start()
+                    with gp.Model(env=env, name="portfolio_mv_opt_sharpe") as model:
+                        
+                        w = model.addMVar(n, name="w", lb=-0.1, ub=0.3)
+
+                        front = 0
+                        for i in range(n):
+                            front += w[i] * mu[i]
+
+                        back = 0
+                        for i in range(n):
+                            for j in range(n):
+                                back += w[i] * Sigma[i, j] * w[j]
+                        
+                        model.setObjective(front - ((gamma / 2) * back), gp.GRB.MAXIMIZE)
+                        model.addConstr(w.sum() == 0.9)
+
+                        model.optimize()
+
+                        if model.status == gp.GRB.OPTIMAL or model.status == gp.GRB.SUBOPTIMAL:
+                            solution = []
+                            for i in range(n):
+                                var = model.getVarByName(f"w[{i}]")
+                                # print(f"w {i} = {var.X}")
+                                solution.append(var.X)
+                            return solution
+                        else:
+                            return fallback_solution
+            except Exception as e:
+                return fallback_solution
+        
+        for i in range(self.lookback + 1, len(self.price)):
+            R_n_full = self.returns[assets].iloc[i - self.lookback : i]
+            R_n_mu = self.returns[assets].iloc[i - 120 : i]
+            
+            self.portfolio_weights.loc[self.price.index[i], assets] = mv_opt(
+                R_n_full, R_n_mu, self.gamma, 
+            )
         
         """
         TODO: Complete Task 4 Above
